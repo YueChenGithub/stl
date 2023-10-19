@@ -21,7 +21,7 @@ pi_2 = LinearPredicate(a=[1], b=[10])  # a*y - b > 0
 
 spec = pi.until(pi_2,5, 10)  # F_[0,5] pi
 
-# solver = GurobiMICPSolver(spec, sys, x0, t_end, robustness_cost=False)
+solver = GurobiMICPSolver(spec, sys, x0, t_end, robustness_cost=False)
 # solver = GurobiMICPSolver(spec, sys, x0, t_end, robustness_cost=True)
 # solver = GurobiMICPSolver_time(spec, sys, x0, t_end)
 # solver = GurobiMICPSolver_time_reduced(spec, sys, x0, t_end)
