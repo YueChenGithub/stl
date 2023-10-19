@@ -33,8 +33,15 @@ if SCIPY_ENABLED:
 
 if GUROBI_ENABLED:
     from .gurobi.gurobi_micp import GurobiMICPSolver
+    from .gurobi.gurobi_micp_time import GurobiMICPSolver_time
+    from .gurobi.gurobi_micp_time_reduced import GurobiMICPSolver_time_reduced
+    from .gurobi.gurobi_micp_time_exact import GurobiMICPSolver_time_exact
+
 
 if DRAKE_ENABLED:
     from .drake.drake_micp import DrakeMICPSolver
     from .drake.drake_smooth import DrakeSmoothSolver
     from .drake.drake_sos1 import DrakeSos1Solver
+
+
+

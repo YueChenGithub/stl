@@ -8,7 +8,7 @@ from gurobipy import GRB
 import time
 
 
-class GurobiMICPSolver(STLSolver):
+class GurobiMICPSolver_time(STLSolver):
     """
     Given an :class:`.STLFormula` :math:`\\varphi` and a :class:`.LinearSystem`,
     solve the optimization problem
@@ -27,7 +27,7 @@ class GurobiMICPSolver(STLSolver):
 
     with Gurobi using mixed-integer convex programming. This gives a globally optimal
     solution, but may be computationally expensive for long and complex specifications.
-
+    
     .. note::
 
         This class implements the algorithm described in
@@ -106,7 +106,6 @@ class GurobiMICPSolver(STLSolver):
         for t in range(1, self.T):
             self.cost += self.x[:, t] @ Q @ self.x[:, t] + self.u[:, t] @ R @ self.u[:, t]
 
-        print(type(self.cost))
 
     def AddRobustnessCost(self):
         self.cost -= 1 * self.rho
@@ -141,7 +140,10 @@ class GurobiMICPSolver(STLSolver):
             u = None
             rho = -np.inf
 
-        return (x, u, rho, self.model.Runtime)
+        return x, u, rho, self.model.Runtime
+
+    def get_variable(self):
+        return self.zt.X, self.ct1.X, self.ct0.X, self.chara.X
 
     def AddDynamicsConstraints(self):
         # Initial condition
@@ -204,12 +206,39 @@ class GurobiMICPSolver(STLSolver):
         """
         # We're at the bottom of the tree, so add the big-M constraints
         if isinstance(formula, LinearPredicate):
-            # a.T*y - b + (1-z)*M >= rho
-            self.model.addConstr(formula.a.T @ self.y[:, t] - formula.b + (1 - z) * self.M >= self.rho)
+            rho = formula.a.T @ self.y[:, 0:self.T] - formula.b
+            zt = self.model.addMVar(self.T, vtype=GRB.BINARY)
 
+            for i in range(self.T):
+                self.model.addConstr(rho[0, i] >= 0 - self.M * (1 - zt[i]))
+                self.model.addConstr(rho[0, i] <= 0 + self.M * zt[i])
+
+            chara = self.model.addMVar(self.T, vtype=GRB.INTEGER, lb=-100)
+            self.model.addConstr(chara == 2 * zt - 1)
+            ct1 = self.model.addMVar(self.T + 1, vtype=GRB.INTEGER, lb=-100)
+            ct0 = self.model.addMVar(self.T + 1, vtype=GRB.INTEGER, lb=-100)
+            self.model.addConstr(ct1[-1] == 0)
+            self.model.addConstr(ct0[-1] == 0)
+
+            for i in reversed(range(self.T)):
+                self.model.addConstr(ct1[i] == (ct1[i + 1] + 1) * zt[i])
+                self.model.addConstr(ct0[i] == (ct0[i + 1] - 1) * (1 - zt[i]))
+
+            # theta = ct1[:-1] + ct0[:-1] - chara  # temporal robustness, original, wierd time shift
+            theta = ct1[:-1] + ct0[:-1]
+
+
+            robustness = theta[t]
+            self.model.addConstr(robustness + (1 - z) * self.M >= self.rho)
             # Force z to be binary
             b = self.model.addMVar(1, vtype=GRB.BINARY)
             self.model.addConstr(z == b)
+
+            # record for the last update
+            self.zt = zt
+            self.ct1 = ct1
+            self.ct0 = ct0
+            self.chara = chara
 
         elif isinstance(formula, NonlinearPredicate):
             raise TypeError("Mixed integer programming does not support nonlinear predicates")
