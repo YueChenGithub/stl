@@ -10,19 +10,16 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from stlpy_local.benchmarks import RandomMultitarget
+from stlpy_local.benchmarks import NarrowPassage
 from stlpy_local.solvers import *
 
 # Specification Parameters
-num_obstacles = 1
-num_groups = 5
-targets_per_group = 2
-T = 25
+T = 10
 
-# Define the specification and system dynamics
-scenario = RandomMultitarget(
-        num_obstacles, num_groups, targets_per_group, T, seed=0)
+# Create the specification and define the dynamics
+scenario = NarrowPassage(T)
 spec = scenario.GetSpecification()
+spec.simplify()
 sys = scenario.GetSystem()
 
 # Specify any additional running cost (this helps the numerics in
@@ -31,13 +28,13 @@ Q = 1e-1*np.diag([0,0,1,1])   # just penalize high velocities
 R = 1e-1*np.eye(2)
 
 # Initial state
-x0 = np.array([5.0,2.0,0,0])
+x0 = np.array([3.0,3.6,0,0])
 
-# Define the solver
+# Choose a solver
 # solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=False)
 # solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
-solver = GurobiMICPSolver_time(spec, sys, x0, T)
-# solver = GurobiMICPSolver_time_reduced(spec, sys, x0, T)
+# solver = GurobiMICPSolver_right_hand(spec, sys, x0, T)
+solver = GurobiMICPSolver_left_hand(spec, sys, x0, T)
 
 # Set bounds on state and control variables
 u_min = np.array([-0.5,-0.5])
@@ -48,7 +45,8 @@ solver.AddControlBounds(u_min, u_max)
 solver.AddStateBounds(x_min, x_max)
 
 # Add quadratic running cost (optional)
-solver.AddQuadraticCost(0.01*Q,0.01*R)
+solver.AddQuadraticCost(Q,R)
+
 
 # Solve the optimization problem
 x, u, _, _ = solver.Solve()
@@ -59,3 +57,10 @@ if x is not None:
     scenario.add_to_plot(ax)
     plt.scatter(*x[:2,:])
     plt.show()
+
+robustness_list = solver.getRobustness()
+for i, robustness in enumerate(robustness_list):
+    plt.plot(np.arange(0, T + 1), robustness.flatten(), '-', label=f"robustness_{i}")
+plt.legend()
+plt.xlabel("timestep (t)")
+plt.show()

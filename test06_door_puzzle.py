@@ -14,7 +14,7 @@ from stlpy_local.benchmarks import DoorPuzzle
 from stlpy_local.solvers import *
 
 # Specification Parameters
-T = 25
+T = 20
 N_pairs = 2
 
 # Create the specification and system
@@ -31,11 +31,9 @@ R = 1e-1*np.eye(2)
 # Initial state
 x0 = np.array([6.0,1.0,0,0])
 
-# Define the solver
+# Specify a solution strategy
 solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=False)
-# solver = GurobiMICPSolver_time(spec, sys, x0, T, robustness_cost=True)
-#solver = DrakeMICPSolver(spec, sys, x0, T, robustness_cost=True)
-# solver = DrakeSos1Solver(spec, sys, x0, T, robustness_cost=True)
+solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
 
 # Set bounds on state and control variables
 u_min = np.array([-0.5,-0.5])
@@ -57,3 +55,10 @@ if x is not None:
     scenario.add_to_plot(ax)
     plt.scatter(*x[:2,:])
     plt.show()
+
+robustness_list = solver.getRobustness()
+for i, robustness in enumerate(robustness_list):
+    plt.plot(np.arange(0, T + 1), robustness.flatten(), '-', label=f"robustness_{i}")
+plt.legend()
+plt.xlabel("timestep (t)")
+plt.show()

@@ -15,7 +15,7 @@ from stlpy_local.solvers import *
 
 # Specification Parameters
 num_stones = 15
-T = 15
+T = 10
 
 # Define the specification and system dynamics
 scenario = SteppingStones(num_stones, T, seed=1)
@@ -31,11 +31,11 @@ R = 1e-1*np.eye(2)
 # Initial state
 x0 = np.array([2.0,1.3,0,0])
 
-# Specify a solution strategy
+# Choose a solver
 # solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=False)
-# solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
-solver = GurobiMICPSolver_time(spec, sys, x0, T)
-# solver = GurobiMICPSolver_time_reduced(spec, sys, x0, T)
+solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
+# solver = GurobiMICPSolver_right_hand(spec, sys, x0, T)
+# solver = GurobiMICPSolver_left_hand(spec, sys, x0, T)
 
 # Set bounds on state and control variables
 u_min = np.array([-0.5,-0.5])
@@ -57,3 +57,11 @@ if x is not None:
     scenario.add_to_plot(ax)
     plt.scatter(*x[:2,:])
     plt.show()
+
+
+robustness_list = solver.getRobustness()
+for i, robustness in enumerate(robustness_list):
+    plt.plot(np.arange(0, T + 1), robustness.flatten(), '-', label=f"robustness_{i}")
+plt.legend()
+plt.xlabel("timestep (t)")
+plt.show()

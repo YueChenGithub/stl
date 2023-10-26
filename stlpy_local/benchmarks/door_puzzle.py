@@ -87,7 +87,7 @@ class DoorPuzzle(BenchmarkScenario):
             key_constraints = k1d1 & k2d2
         elif self.N == 3:
             key_constraints = k1d1 & k2d2 & k3d3
-        elif elf.N == 4:
+        elif self.N == 4:
             key_constraints = k1d1 & k2d2 & k3d3 & k4d4
 
         # Put all of the constraints together in one specification

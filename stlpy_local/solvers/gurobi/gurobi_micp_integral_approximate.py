@@ -8,7 +8,7 @@ from gurobipy import GRB
 import time
 
 
-class GurobiMICPSolver_time_exact(STLSolver):
+class GurobiMICPSolver_integral_approximate(STLSolver):
     """
     Given an :class:`.STLFormula` :math:`\\varphi` and a :class:`.LinearSystem`,
     solve the optimization problem
@@ -61,6 +61,8 @@ class GurobiMICPSolver_time_exact(STLSolver):
 
         # Set up the optimization problem
         self.model = gp.Model("STL_MICP")
+        self.model.params.NonConvex = 2
+        # self.model.params.MIPFocus = 3
 
         # Store the cost function, which will added to self.model right before solving
         self.cost = 0.0
@@ -142,8 +144,6 @@ class GurobiMICPSolver_time_exact(STLSolver):
 
         return x, u, rho, self.model.Runtime
 
-    def get_variable(self):
-        return self.zt.X, self.ct1.X, self.ct0.X, self.chara.X
 
     def AddDynamicsConstraints(self):
         # Initial condition
@@ -206,39 +206,28 @@ class GurobiMICPSolver_time_exact(STLSolver):
         """
         # We're at the bottom of the tree, so add the big-M constraints
         if isinstance(formula, LinearPredicate):
+            # only conside the time step on the right
+
             rho = formula.a.T @ self.y[:, 0:self.T] - formula.b
-            zt = self.model.addMVar(self.T, vtype=GRB.BINARY)
+            zt = self.model.addMVar(self.T - t, vtype=GRB.BINARY)  # zt = 1 if rho >= 0, 0 otherwise
 
-            for i in range(self.T):
-                self.model.addConstr(rho[0, i] >= 0 - self.M * (1 - zt[i]))
-                self.model.addConstr(rho[0, i] <= 0 + self.M * zt[i])
+            for i in range(0, self.T - t):
+                self.model.addConstr(rho[0, t + i] >= 0 - self.M * (1 - zt[i]))
+                self.model.addConstr(rho[0, t + i] <= 0 + self.M * zt[i])
 
-            chara = self.model.addMVar(self.T, vtype=GRB.INTEGER, lb=-1, ub=1)
-            self.model.addConstr(chara == 2 * zt - 1)
-            ct1 = self.model.addMVar(self.T + 1, vtype=GRB.INTEGER, lb=0, ub=self.T)
-            ct0 = self.model.addMVar(self.T + 1, vtype=GRB.INTEGER, lb=-self.T, ub=0)
-            self.model.addConstr(ct1[-1] == 0)
+            # count 0, ct0 represents the number of consecutive 0s
+            ct0 = self.model.addMVar(self.T - t + 1, vtype=GRB.INTEGER, lb=-100)
             self.model.addConstr(ct0[-1] == 0)
+            for i in reversed(range(self.T - t)):
+                self.model.addConstr(ct0[i] == (ct0[i + 1] + 1) * (1 - zt[i]))
 
-            for i in reversed(range(self.T)):
-                self.model.addConstr(ct1[i] == (ct1[i + 1] + 1) * zt[i])
-                self.model.addConstr(ct0[i] == (ct0[i + 1] - 1) * (1 - zt[i]))
+            robustness = rho[:, t] @ ct0[0:1]
 
-            theta = ct1[:-1] + ct0[:-1] - chara  # temporal robustness, original, wierd time shift
-            # theta = ct1[:-1] + ct0[:-1]
-
-
-            robustness = theta[t]
             self.model.addConstr(robustness + (1 - z) * self.M >= self.rho)
             # Force z to be binary
             b = self.model.addMVar(1, vtype=GRB.BINARY)
             self.model.addConstr(z == b)
 
-            # record for the last update
-            self.zt = zt
-            self.ct1 = ct1
-            self.ct0 = ct0
-            self.chara = chara
 
         elif isinstance(formula, NonlinearPredicate):
             raise TypeError("Mixed integer programming does not support nonlinear predicates")
@@ -262,3 +251,20 @@ class GurobiMICPSolver_time_exact(STLSolver):
                     t_sub = formula.timesteps[i]
                     self.AddSubformulaConstraints(subformula, z_sub, t + t_sub)
                 self.model.addConstr(z <= sum(z_subs))
+
+    # def getRobustness(self):
+    #     formula = self.spec
+    #     robustness = []
+    #     self.find_first_LinearPredicate(formula, robustness)
+    #     # remove identical elements in robustness
+    #     unique_robustness = list({array.tostring(): array for array in robustness}.values())
+    #     return unique_robustness
+    #
+    # def find_first_LinearPredicate(self, formula, robustness):
+    #     if isinstance(formula, LinearPredicate):
+    #         robustness.append(formula.a.T @ self.y.X - formula.b)
+    #         return 0
+    #
+    #     for subformula in formula.subformula_list:
+    #         self.find_first_LinearPredicate(subformula, robustness)
+

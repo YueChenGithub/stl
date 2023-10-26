@@ -15,7 +15,7 @@ from matplotlib.animation import FuncAnimation
 
 from stlpy_local.STL import STLFormula, LinearPredicate
 from stlpy_local.systems import LinearSystem
-from stlpy_local.solvers import GurobiMICPSolver, GurobiMICPSolver_time
+from stlpy_local.solvers import GurobiMICPSolver, GurobiMICPSolver_right_hand_full
 
 ######################################
 # System definition

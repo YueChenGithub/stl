@@ -13,36 +13,37 @@ D = np.array([[0.]])
 sys = LinearSystem(A, B, C, D)
 
 x0 = np.array([[10]])
-t_0 = 0
-t_end = 20
+T = 10
 
 pi = LinearPredicate(a=[1], b=[2])  # a*y - b > 0
 pi_2 = LinearPredicate(a=[1], b=[10])  # a*y - b > 0
 
-spec = pi.until(pi_2,5, 10)  # F_[0,5] pi
+spec = pi.until(pi_2,5, 8)  # F_[0,5] pi
 
-solver = GurobiMICPSolver(spec, sys, x0, t_end, robustness_cost=False)
-# solver = GurobiMICPSolver(spec, sys, x0, t_end, robustness_cost=True)
-# solver = GurobiMICPSolver_time(spec, sys, x0, t_end)
-# solver = GurobiMICPSolver_time_reduced(spec, sys, x0, t_end)
+# Choose a solver
+solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=False)
+# solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
+# solver = GurobiMICPSolver_right_hand_full(spec, sys, x0, T)
+# solver = GurobiMICPSolver_right_hand(spec, sys, x0, T)
+# solver = GurobiMICPSolver_left_hand_full(spec, sys, x0, T)
+# solver = GurobiMICPSolver_left_hand(spec, sys, x0, T)
+# solver = GurobiMICPSolver_integral_approximate(spec, sys, x0, T)
+# solver = GurobiMICPSolver_integral_naive(spec, sys, x0, T)
 
 
 solver.AddQuadraticCost(Q=np.eye(1), R=np.eye(1))
 x, u, _, _ = solver.Solve()
-# solvers.AddSpatialCost(spec)
-
-# zt, ct1, ct0, chara = solver.get_variable()
 
 
-plt.plot(np.arange(t_0, t_end + 1), x.flatten(), '-', label="y")
-plt.plot(np.arange(t_0, t_end + 1), u.flatten(), '-', label="u")
-# plt.plot(np.arange(t_0, t_end + 1), zt.flatten(), '-', label="zt")
-# plt.plot(np.arange(t_0, t_end + 1), ct1.flatten()[0:-1], '-', label="ct1")
-# plt.plot(np.arange(t_0, t_end + 1), ct0.flatten()[0:-1], '-', label="ct0")
-# plt.plot(np.arange(t_0, t_end + 1), chara.flatten(), '-', label="chara")
+plt.plot(np.arange(0, T + 1), x.flatten(), '-', label="y")
+plt.plot(np.arange(0, T + 1), u.flatten(), '-', label="u")
 plt.legend()
 plt.xlabel("timestep (t)")
-# plt.ylabel("output signal (y)")
 plt.show()
 
-
+robustness_list = solver.getRobustness()
+for i, robustness in enumerate(robustness_list):
+    plt.plot(np.arange(0, T + 1), robustness.flatten(), '-', label=f"robustness_{i}")
+plt.legend()
+plt.xlabel("timestep (t)")
+plt.show()

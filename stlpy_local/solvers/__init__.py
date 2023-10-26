@@ -33,9 +33,12 @@ if SCIPY_ENABLED:
 
 if GUROBI_ENABLED:
     from .gurobi.gurobi_micp import GurobiMICPSolver
-    from .gurobi.gurobi_micp_time import GurobiMICPSolver_time
-    from .gurobi.gurobi_micp_time_reduced import GurobiMICPSolver_time_reduced
-    from .gurobi.gurobi_micp_time_exact import GurobiMICPSolver_time_exact
+    from .gurobi.gurobi_micp_right_hand_full import GurobiMICPSolver_right_hand_full
+    from .gurobi.gurobi_micp_right_hand import GurobiMICPSolver_right_hand
+    from .gurobi.gurobi_micp_left_hand import GurobiMICPSolver_left_hand
+    from .gurobi.gurobi_micp_left_hand_full import GurobiMICPSolver_left_hand_full
+    from .gurobi.gurobi_micp_integral_approximate import GurobiMICPSolver_integral_approximate
+    from .gurobi.gurobi_micp_integral_naive import GurobiMICPSolver_integral_naive
 
 
 if DRAKE_ENABLED:
